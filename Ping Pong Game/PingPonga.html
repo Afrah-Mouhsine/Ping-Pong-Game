@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Ping Pong Game</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      /* Body styling */
+      body {
+        margin: 0;
+        padding: 0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        background: linear-gradient(
+          135deg,
+          #1e1e2f,
+          #2a2a40
+        ); /* Dark gradient */
+        color: white;
+        font-family: Arial, sans-serif;
+      }
+
+      /* Game container */
+      #gamecont {
+        text-align: center;
+        padding: 20px;
+        border: 4px solid #00ffcc;
+        border-radius: 20px;
+        box-shadow: 0 0 20px rgba(0, 255, 204, 0.5); /* Glow effect */
+        background: rgba(0, 0, 0, 0.7); /* Semi-transparent background */
+        display: inline-block;
+        margin-top: 50px;
+      }
+
+      /* Game board */
+      #gameboard {
+        border: 4px solid #2c3e50; /* Darker border */
+        background: linear-gradient(
+          135deg,
+          #2c3e50,
+          #34495e
+        ); /* Dark gradient */
+        box-shadow: 0 0 20px rgba(0, 0, 0, 0.5); /* Subtle shadow */
+        border-radius: 10px; /* Rounded corners */
+      }
+
+      /* Score display */
+      #score {
+        font-family: "Orbitron", sans-serif; /* Futuristic font */
+        font-size: 120px;
+        color: #00ffcc; /* Neon color */
+        text-shadow: 0 0 10px #00ffcc, 0 0 20px #00ffcc; /* Glow effect */
+        margin: 20px 0;
+      }
+
+      /* Reset button */
+      #reset {
+        font-family: "Orbitron", sans-serif; /* Match the score font */
+        font-size: 22px;
+        height: 50px;
+        border: none;
+        cursor: pointer;
+        border-radius: 25px;
+        background: linear-gradient(
+          135deg,
+          #00ffcc,
+          #0099ff
+        ); /* Gradient background */
+        color: white;
+        box-shadow: 0 0 10px rgba(0, 255, 204, 0.5); /* Glow effect */
+        transition: transform 0.2s, box-shadow 0.2s;
+      }
+
+      #reset:hover {
+        transform: scale(1.05); /* Slightly enlarge on hover */
+        box-shadow: 0 0 20px rgba(0, 255, 204, 0.8); /* Stronger glow on hover */
+      }
+
+      #reset:active {
+        transform: scale(0.95); /* Slightly shrink on click */
+      }
+    </style>
+  </head>
+  <body>
+    <div id="gamecont">
+      <canvas id="gameboard" width="500" height="500"></canvas>
+      <div id="score">0 : 0</div>
+      <button id="reset">Reset Game</button>
+    </div>
+
+    <script>
+      console.log("test");
+      const gameboard = document.getElementById("gameboard");
+      const ctx = gameboard.getContext("2d");
+      const score = document.getElementById("score");
+      const reset = document.getElementById("reset");
+      const keys = {};
+
+      // Game dimensions
+      const gamewidth = gameboard.width;
+      const gameheight = gameboard.height;
+      const gamebg = "grey";
+
+      // Players
+      const Player1Color = "lightblue";
+      const Player2Color = "lightgreen";
+      const PlayerSpeed = 6;
+      const PlayerBorder = "black";
+      let player1score = 0;
+      let player2score = 0;
+      let player1 = {
+        width: 25,
+        height: 100,
+        x: 0,
+        y: 0,
+      };
+      let player2 = {
+        width: 25,
+        height: 100,
+        x: gamewidth - 25,
+        y: gameheight - 100,
+      };
+
+      // Ball
+      const ballColor = "white";
+      const ballBorder = "black";
+      const ballredius = 12.5;
+      let ballx = gamewidth / 2;
+      let ballY = gameheight / 2;
+      let ballxdirection = 0;
+      let ballydirection = 0;
+      let ballspeed = 1;
+
+      reset.addEventListener("click", resetfct);
+
+      function resetfct() {
+        // Reset player positions
+        player1.y = 0;
+        player2.y = gameheight - player2.height;
+
+        // Reset ball position, direction, and speed
+        ballx = gamewidth / 2;
+        ballY = gameheight / 2;
+        ballxdirection = Math.round(Math.random()) === 1 ? 1 : -1;
+        ballydirection = Math.round(Math.random()) === 1 ? 1 : -1;
+        let ballspeed = 1;
+
+        // Reset scores
+        player1score = 0;
+        player2score = 0;
+        updatescore(); // Update displayed score
+
+        // Clear and restart the game loop
+        cancelAnimationFrame(animationId);
+        clearboard();
+        gamestart();
+      }
+
+      // Functions
+      gamestart();
+      drawpaddles();
+
+      function gamestart() {
+        createball();
+        requestAnimationFrame(nexttick);
+      }
+
+      function drawpaddles() {
+        ctx.strokeStyle = PlayerBorder;
+
+        ctx.fillStyle = Player1Color;
+        ctx.fillRect(player1.x, player1.y, player1.width, player1.height);
+        ctx.strokeRect(player1.x, player1.y, player1.width, player1.height);
+
+        ctx.fillStyle = Player2Color;
+        ctx.fillRect(player2.x, player2.y, player2.width, player2.height);
+        ctx.strokeRect(player2.x, player2.y, player2.width, player2.height);
+      }
+
+      let animationId;
+      function nexttick() {
+        clearboard();
+        drawball(ballx, ballY);
+        moveball();
+        drawpaddles();
+        checkcollision();
+        movePaddles();
+
+        animationId = requestAnimationFrame(nexttick);
+      }
+
+      function clearboard() {
+        ctx.fillStyle = gamebg;
+        ctx.fillRect(0, 0, gamewidth, gameheight);
+      }
+
+      function createball() {
+        ballspeed = 1;
+
+        if (Math.round(Math.random()) === 1) {
+          ballxdirection = 1;
+        } else {
+          ballxdirection = -1;
+        }
+
+        if (Math.round(Math.random()) === 1) {
+          ballydirection = 1;
+        } else {
+          ballydirection = -1;
+        }
+        ballx = gamewidth / 2;
+        ballY = gameheight / 2;
+        drawball(ballx, ballY);
+      }
+
+      function moveball() {
+        ballY += ballspeed * ballydirection;
+        ballx += ballspeed * ballxdirection;
+      }
+
+      function drawball(ballx, ballY) {
+        ctx.fillStyle = ballColor;
+        ctx.strokeStyle = ballBorder;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(ballx, ballY, ballredius, 0, 2 * Math.PI);
+        ctx.stroke();
+        ctx.fill();
+      }
+
+      function checkcollision() {
+        if (ballY <= 0 + ballredius || ballY >= gameheight - ballredius) {
+          ballydirection *= -1;
+        }
+        if (ballx <= 0) {
+          player2score += 1;
+          updatescore();
+          createball();
+          return;
+        }
+        if (ballx >= gamewidth) {
+          player1score += 1;
+          updatescore();
+          createball();
+          return;
+        }
+        if (ballx <= player1.x + player1.width + ballredius) {
+          if (ballY > player1.y && ballY < player1.y + player1.height) {
+            ballxdirection *= -1;
+            ballspeed += 0.4;
+          }
+        }
+        if (ballx >= player2.x - ballredius) {
+          if (ballY > player2.y && ballY < player2.y + player2.height) {
+            ballxdirection *= -1;
+            ballspeed += 0.4;
+          }
+        }
+      }
+
+      function updatescore() {
+        score.textContent = `${player1score} : ${player2score}`;
+      }
+
+      // Function to move paddles
+      function movePaddles() {
+        // Player 1 (Z and S keys)
+        if (keys["z"] && player1.y > 0) {
+          player1.y -= PlayerSpeed;
+        }
+        if (keys["s"] && player1.y + player1.height < gameboard.height) {
+          player1.y += PlayerSpeed;
+        }
+
+        // Player 2 (Arrow Up and Arrow Down)
+        if (keys["ArrowUp"] && player2.y > 0) {
+          player2.y -= PlayerSpeed;
+        }
+        if (
+          keys["ArrowDown"] &&
+          player2.y + player2.height < gameboard.height
+        ) {
+          player2.y += PlayerSpeed;
+        }
+      }
+
+      // Event listeners for key presses
+      window.addEventListener("keydown", (event) => {
+        keys[event.key] = true; // Mark key as pressed
+      });
+
+      window.addEventListener("keyup", (event) => {
+        keys[event.key] = false; // Mark key as released
+      });
+    </script>
+  </body>
+</html>
